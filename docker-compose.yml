@@ -1,0 +1,139 @@
+version: "3.8"
+
+services:
+
+    postgres:
+        container_name: postgres
+        image: postgres:16.1-alpine
+        restart: always
+        volumes:
+            - postgres_data:/var/lib/postgresql/data/
+        env_file:
+            - ./.env
+        ports:
+            # внешний порт 5433 для обхода конфликта портов
+            # если на компьютере уже запущен postgres сервер на порту 5432
+            - 5433:5432
+        networks:
+            - back
+
+
+    redis:
+        container_name: redis
+        image: redis:7.2.3-alpine
+        restart: unless-stopped
+        command: redis-server /usr/local/etc/redis/redis.conf
+        volumes:
+            - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+        ports:
+            - 6379:6379
+        networks:
+            - back
+
+
+    rabbitmq:
+        container_name: rabbitmq
+        image: rabbitmq:3.12-alpine
+        restart: unless-stopped
+        volumes:
+            - rabbitmq_data:/var/lib/rabbitmq
+            - rabbitmq_log:/var/log/rabbitmq
+        env_file:
+            - ./.env
+        ports:
+            - 5672:5672
+            - 15672:15672
+        networks:
+            - back
+
+
+    wsgiserver:
+        container_name: wsgiserver
+        build:
+            context: ./
+        restart: always
+        command: >
+            sh -c "echo '>>> EXECUTION wsgiserver command' &&
+            python manage.py collectstatic --noinput &&
+            python manage.py makemigrations --noinput &&
+            python manage.py migrate --noinput &&
+            python manage.py runserver 0.0.0.0:8000"
+        volumes:
+            - static_volume:/app/static
+            - media_volume:/app/media
+            - .:/app # автоматическая перезагрузка wsgiserver при изменении файлов
+        env_file:
+            - ./.env
+        ports:
+            - 8000:8000
+        depends_on:
+            - postgres
+            - redis
+            - rabbitmq
+        networks:
+            - front
+            - back
+
+
+    celery-worker:
+        container_name: celery-worker
+        build: ./
+        entrypoint: ./docker/backend/celery-worker-entrypoint.sh
+        volumes:
+            - /var/log/celery:/var/run/celery
+            - .:/app # автоматическая перезагрузка celery-worker при изменении файлов (необходимо для работы watchfiles/runcelery)
+        env_file:
+            - ./.env
+        depends_on:
+            - postgres
+            - redis
+            - rabbitmq
+        networks:
+            - back
+
+
+    # celery-beat:
+    #     container_name: celery-beat
+    #     build: ./
+    #     entrypoint: ./docker/backend/celery-beat-entrypoint.sh
+    #     volumes:
+    #         - /var/log/celery:/var/run/celery
+    #     env_file:
+    #         - ./.env
+    #     depends_on:
+    #         - postgres
+    #         - redis
+    #         - rabbitmq
+    #     networks:
+    #         - back
+
+
+    celery-flower:
+        container_name: celery-flower
+        build: ./
+        entrypoint: ./docker/backend/celery-flower-entrypoint.sh
+        volumes:
+            - /var/log/celery:/var/run/celery
+        env_file:
+            - ./.env
+        ports:
+            - 5555:5555
+        depends_on:
+            - postgres
+            - redis
+            - rabbitmq
+        networks:
+            - back
+
+
+volumes:
+    postgres_data:
+    rabbitmq_data:
+    rabbitmq_log:
+    static_volume:
+    media_volume:
+
+
+networks:
+    front:
+    back:

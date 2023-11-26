@@ -1,0 +1,16 @@
+*.pyc
+*env/
+__pycache__/
+*/__pycache__/
+.mypy_cache/
+.pytest_cache/
+.github/
+.dockerignore
+.gitignore
+.pylintrtc
+mypy.ini
+README.md
+
+**/migrations/**
+!**/migrations
+!**/migrations/__init__.py

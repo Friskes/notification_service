@@ -1,0 +1,19 @@
+django
+djangorestframework
+python-dotenv
+drf-yasg
+httpx
+psycopg2-binary
+
+redis
+django-redis
+
+amqp
+celery
+flower
+
+# django-celery-beat
+django-celery-results
+
+watchfiles
+psutil
