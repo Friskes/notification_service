@@ -15,10 +15,11 @@ PROBE_SERVER_URL=https://probe.fbrq.cloud/v1/send/
 PROBE_SERVER_TOKEN=<секретный JWT токен>
 
 RUN_DEV_SERVER_WITH_DOCKER=1
+WINDOWS_POSTGRES_INSTALLED=1 # необходимо заранее вручную создать БД, например в pgAdmin4
 
-POSTGRES_DB=POSTGRES_DB
-POSTGRES_USER=POSTGRES_USER
-POSTGRES_PASSWORD=POSTGRES_PASSWORD
+POSTGRES_DB=NOTIFICATION_SERVICE_DB
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
 POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
 
@@ -44,6 +45,8 @@ git clone https://gitlab.com/Friskes/notification_service.git
 docker compose up --build -d
 # создание суперпользователя для входа в админку
 docker exec -it wsgiserver python manage.py createsuperuser
+# выполнение тестов
+docker exec -it wsgiserver python manage.py test notification.tests
 # остановка контейнеров
 docker compose down
 ```
@@ -54,6 +57,8 @@ http://127.0.0.1:8000/docs/
 ```
 
 ### Выполненые дополнительные задания:
+1. организовать тестирование написанного кода
+
 3. подготовить docker-compose для запуска всех сервисов проекта одной командой
 
 5. сделать так, чтобы по адресу /docs/ открывалась страница со Swagger UI и в нём отображалось описание разработанного API. Пример: https://petstore.swagger.io

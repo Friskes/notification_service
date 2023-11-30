@@ -1,10 +1,11 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, get_list_or_404
 
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 
+from notification.services import service
 from notification.serializers import ClientSerializer, MessageSerializer, MailingSerializer
 from notification.models import Client, Mailing, Message
 
@@ -88,14 +89,9 @@ class MailingViewSet(viewsets.ModelViewSet):
     )
     @action(["get"], False)
     def fullstat(self, request):
-        statistics = []
-        for mail in self.queryset:
-            statistics.append({
-                'mailing_id': mail.pk,
-                'sent_messages': mail.get_sent_messages,
-                'messages_to_send': mail.get_messages_to_send,
-                'unsent_messages': mail.get_unsent_messages
-            })
+        statistics = service.get_statistics(
+            self.queryset
+        )
         return Response(statistics)
 
     @swagger_auto_schema(
@@ -105,14 +101,10 @@ class MailingViewSet(viewsets.ModelViewSet):
     )
     @action(["get"], True)
     def stat(self, request, pk=None):
-        mail = get_object_or_404(self.queryset, pk=pk)
-        statistic = {
-            'mailing_id': mail.pk,
-            'sent_messages': mail.get_sent_messages,
-            'messages_to_send': mail.get_messages_to_send,
-            'unsent_messages': mail.get_unsent_messages
-        }
-        return Response(statistic)
+        statistics = service.get_statistics(
+            get_list_or_404(self.queryset, pk=pk)
+        )
+        return Response(statistics)
 
     @swagger_auto_schema(
         tags=['Получение рассылок'],

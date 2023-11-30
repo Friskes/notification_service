@@ -9,8 +9,10 @@ from django.conf import settings
 
 import httpx
 
+from notification import models as m # fix (most likely due to a circular import)
 
-async def asave_message(message, status: str):
+
+async def asave_message(message: m.Message, status: str):
     """
     Асинхронно сохраняет сообщение с новыми статусом
     """
@@ -18,7 +20,12 @@ async def asave_message(message, status: str):
     await message.asave()
 
 
-async def send_mailing_to_client(mailing, client, message, post_headers: dict[str, str]):
+async def send_mailing_to_client(
+    mailing: m.Mailing,
+    client: m.Client,
+    message: m.Message,
+    post_headers: dict[str, str]
+):
     """
     Асинхронно пытается передать сообщение клиенту,
     в случае возникновения проблем с сетью, повторяет попытку, до тех пор,
@@ -36,9 +43,8 @@ async def send_mailing_to_client(mailing, client, message, post_headers: dict[st
     }
 
     while mailing.can_send:
-        try:
-            async with httpx.AsyncClient() as aclient:
-
+        async with httpx.AsyncClient() as aclient:
+            try:
                 response = await aclient.post(
                     f"{settings.PROBE_SERVER_URL}{message.pk}",
                     json=payload,
@@ -50,51 +56,50 @@ async def send_mailing_to_client(mailing, client, message, post_headers: dict[st
                 )
                 response.raise_for_status()
 
-            await asave_message(message, 'sent')
-            log.info(
-                f"Сообщение с id: {message.pk} для рассылки с id: {mailing.pk} для клиента с id: {client.pk}"
-                " успешно отправлено :) присвоен статус <sent>"
-            )
-            return
+            except (ConnectionError,) as exc:
+                log.exception(
+                    f"Сообщение с id: {message.pk} для рассылки с id: {mailing.pk} для клиента с id: {client.pk}"
+                    f" не получилось отправить изза ошибки: {exc}",
+                    exc_info=True
+                )
+            else:
+                await asave_message(message, message.SENT)
+                log.info(
+                    f"Сообщение с id: {message.pk} для рассылки с id: {mailing.pk} для клиента с id: {client.pk}"
+                    f" успешно отправлено :) присвоен статус <{message.SENT}>"
+                )
+                return
 
-        except (ConnectionError, Exception) as exc:
-            log.info(
-                f"Сообщение с id: {message.pk} для рассылки с id: {mailing.pk} для клиента с id: {client.pk}"
-                f" не получилось отправить изза ошибки: {exc}"
-            )
-
-        await asave_message(message, 'failed')
-        log.info(
-            f"Сообщение с id: {message.pk} для рассылки с id: {mailing.pk} для клиента с id: {client.pk}"
-            " не удалось отправить :( присвоен статус <failed>"
-        )
+    await asave_message(message, message.FAILED)
+    log.info(
+        f"Сообщение с id: {message.pk} для рассылки с id: {mailing.pk} для клиента с id: {client.pk}"
+        f" не удалось отправить :( присвоен статус <{message.FAILED}>"
+    )
 
 
 async def generate_mailing_tasks(*args, **kwargs):
     """
     Создает асинхронные задачи для рассылки данных всем клиентам подходящим под фильтр.
     """
-    from notification.models import Mailing, Client, Message
-
     post_headers = {
         'Authorization': f'Bearer {settings.PROBE_SERVER_TOKEN}',
         'Content-Type': 'application/json'
     }
 
-    mailing = await Mailing.objects.aget(id=kwargs['mailing_id'])
+    mailing = await m.Mailing.objects.aget(id=kwargs['mailing_id'])
 
     tasks = []
-    async for client in Client.objects.filter(
+    async for client in m.Client.objects.filter(
         Q(code__in=mailing.mobile_codes) | Q(tag__in=mailing.tags)
     ):
-        message = await Message.objects.acreate(
-            status='proceeded',
+        message = await m.Message.objects.acreate(
+            status=m.Message.PROCEEDED,
             mailing=mailing,
             client=client
         )
         log.info(
             f"Сообщение с id: {message.pk} для рассылки с id: {mailing.pk} для клиента с id: {client.pk}"
-            " успешно создано, присвоен статус <proceeded>"
+            f" успешно создано, присвоен статус <{m.Message.PROCEEDED}>"
         )
 
         task = asyncio.create_task(send_mailing_to_client(mailing, client, message, post_headers))

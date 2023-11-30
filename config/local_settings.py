@@ -25,7 +25,7 @@ else:
     }
 
 
-if RUN_DEV_SERVER_WITH_DOCKER:
+if RUN_DEV_SERVER_WITH_DOCKER or WINDOWS_POSTGRES_INSTALLED:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',

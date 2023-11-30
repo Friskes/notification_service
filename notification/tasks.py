@@ -2,12 +2,12 @@ import asyncio
 import logging
 log = logging.getLogger(__name__)
 
-from notification.services.send_mailing_service import generate_mailing_tasks
 from config.celery import app
+from notification.services.send_mailing_service import generate_mailing_tasks
 
 
 @app.task(bind=True)
-def create_mailing_task(self, *args, **kwargs):
+def run_mailing_task(self, *args, **kwargs):
     """
     Запускает асинхронную рассылку
     """

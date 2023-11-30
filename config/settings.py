@@ -144,6 +144,26 @@ LOGGING = {
             "format": "\n{message}\n",
             "style": "{",
         },
+        # https://stackoverflow.com/a/43955684/19276507
+        'colored_verbose': {
+            '()': 'colorlog.ColoredFormatter',
+            # 'datefmt': '%Y-%m-%d %H:%M:%S',
+            'datefmt': '%H:%M:%S', # шаблон по которому настраивается asctime
+            "format": "%(log_color)s" # с этого места происходит покраска строки
+                      "%(white)s"
+                      "%(levelname)s " # уровень важности сообщения
+                      "%(asctime)s" # время в которое был записан лог
+                    #   "%(bg_cyan)s"
+                    #   "%(black)s"
+                    #   " [%(module)s.py]" # название модуля в котором был записан лог
+                    #   " [%(name)s.py]" # название приложения.модуля в котором был записан лог
+                    #   " [%(filename)s " # название файла с расширением в котором был записан лог
+                    #   "def %(funcName)s" # название функции в которой был записан лог
+                    #   ":%(lineno)s]" # номер строки на которой был записан лог
+                      "%(reset)s | " # с этого места происходит сброс покраски строки
+                      "%(green)s"
+                      "%(message)s"
+        },
     },
     "filters": { # словарь с фильтрами
         "require_debug_true": { # писать лог сообщение только при DEBUG = True
@@ -164,7 +184,8 @@ LOGGING = {
             "level": "DEBUG", # все уровни >= указанного уровня будут обработаны этим обработчиком
             "filters": ["require_debug_true"],
             "class": "logging.StreamHandler",
-            "formatter": "simple",
+            # "formatter": "simple",
+            'formatter': 'colored_verbose',
         },
         "console_prod": {
             "level": "INFO", # все уровни >= указанного уровня будут обработаны этим обработчиком
@@ -198,8 +219,10 @@ CELERY_RESULT_BACKEND = 'django-db'
 # CELERY_RESULT_BACKEND = REDIS_URL_DB_0
 # CELERY_RESULT_BACKEND = RABBITMQ_URL
 
-# CELERY_BROKER_URL = REDIS_URL_DB_0
-CELERY_BROKER_URL = RABBITMQ_URL
+if RUN_DEV_SERVER_WITH_DOCKER:
+    CELERY_BROKER_URL = RABBITMQ_URL
+else:
+    CELERY_BROKER_URL = REDIS_URL_DB_0
 
 CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600}
 CELERY_BROKER_CONNECTION_RETRY = False

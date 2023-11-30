@@ -5,6 +5,7 @@ load_dotenv(find_dotenv())
 
 
 RUN_DEV_SERVER_WITH_DOCKER = bool(int(os.environ.get('RUN_DEV_SERVER_WITH_DOCKER', '0')))
+WINDOWS_POSTGRES_INSTALLED = bool(int(os.environ.get('WINDOWS_POSTGRES_INSTALLED', '1')))
 
 PROBE_SERVER_URL = os.getenv("PROBE_SERVER_URL")
 PROBE_SERVER_TOKEN = os.getenv("PROBE_SERVER_TOKEN")

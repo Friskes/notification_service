@@ -7,7 +7,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 from django.contrib.postgres.fields import ArrayField
 
-from notification import tasks
+from notification.services import service
 
 
 class Mailing(models.Model):
@@ -46,21 +46,21 @@ class Mailing(models.Model):
         """
         Возвращает количество сообщений связанных с текущей рассылкой со статусом "sent"
         """
-        return len(self.messages.filter(status="sent"))
+        return len(self.messages.filter(status=self.messages.model.SENT))
 
     @property
     def get_messages_to_send(self):
         """
         Возвращает количество сообщений связанных с текущей рассылкой со статусом "proceeded"
         """
-        return len(self.messages.filter(status="proceeded"))
+        return len(self.messages.filter(status=self.messages.model.PROCEEDED))
 
     @property
     def get_unsent_messages(self):
         """
         Возвращает количество сообщений связанных с текущей рассылкой со статусом "failed"
         """
-        return len(self.messages.filter(status="failed"))
+        return len(self.messages.filter(status=self.messages.model.FAILED))
 
     @property
     def can_send(self):
@@ -70,30 +70,14 @@ class Mailing(models.Model):
         return timezone.now() < self.ending
 
     def save(self, *args, **kwargs):
-        """
-        Создает задачу рассылки (сейчас/в будущем) при создании нового объекта в БД
-        и если текущее время меньше времени окончания рассылки
-        """
         creating = not bool(self.pk)
         result = super().save(*args, **kwargs)
 
-        log.info(f'{creating = } {self.can_send = }')
-
-        if creating and self.can_send:
-            task_id = tasks.create_mailing_task.apply_async(
-                eta=self.beginning,
-                expires=self.ending,
-                kwargs={
-                    "mailing_id": self.pk,
-                    "ending_dt": str(self.ending),
-                    "tags": self.tags
-                }
-            )
-            log.info(f"Получена задача с id: {task_id} для рассылки с id: {self.pk}")
+        service.create_mailing_task(self, creating)
         return result
 
     def __str__(self):
-        return f"Рассылка {self.pk} от {self.beginning}"
+        return f"Рассылка с id: {self.pk} с временем начала: {self.beginning}"
 
     class Meta:
         verbose_name = "Рассылка"
@@ -108,6 +92,7 @@ class Client(models.Model):
         "Номер телефона клиента",
         unique=True,
         validators=[
+            MaxValueValidator(79999999999),
             RegexValidator(
                 regex=r"^7\w{10}$",
                 message="Номер телефона клиента должен быть в формате 7XXXXXXXXXX (X - цифра от 0 до 9)"
@@ -126,7 +111,7 @@ class Client(models.Model):
     time_zone = models.CharField("Часовой пояс", max_length=50)
 
     def __str__(self):
-        return f"Клиент {self.pk} с номером {self.phone}"
+        return f"Клиент с id: {self.pk} с номером: {self.phone}"
 
     class Meta:
         verbose_name = "Клиент"
@@ -156,7 +141,7 @@ class Message(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="messages")
 
     def __str__(self):
-        return f"Сообщение {self.pk} с текстом {self.message} для {self.client}"
+        return f"Сообщение с id: {self.pk} для рассылки с id: {self.mailing.pk} для клиента с id: {self.client.pk}"
 
     class Meta:
         verbose_name = "Сообщение"

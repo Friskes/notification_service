@@ -17,3 +17,5 @@ django-celery-results
 
 watchfiles
 psutil
+
+colorlog

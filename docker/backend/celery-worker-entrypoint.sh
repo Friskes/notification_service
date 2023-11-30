@@ -6,10 +6,10 @@ mkdir -p /var/run/celery /var/log/celery
 chown -R nobody:nogroup /var/run/celery /var/log/celery
 
 python manage.py runcelery "celery --app=${CELERY_APP} worker -E \
---statedb=/var/run/celery/worker-example@%h.state \
 --hostname=worker-example@%h --uid=nobody --gid=nogroup \
 --loglevel=INFO \
---logfile=/var/log/celery/worker-example.log"
+--logfile=/var/log/celery/worker-example.log" --beat --flower
+# --statedb=/var/run/celery/worker-example@%h.state
 # Если указать лог файл для Celery то лог (stdout, stderr) будет перенаправлен из консоли в файл
 
 # https://testdriven.io/courses/django-celery/auto-reload/#H-4-solution-2-watchfiles
