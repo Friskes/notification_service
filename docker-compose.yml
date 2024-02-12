@@ -51,7 +51,6 @@ services:
         container_name: wsgiserver
         build:
             context: ./
-        restart: always
         entrypoint: ./docker/backend/wsgiserver-entrypoint.sh
         # command: >
         #     sh -c "echo '>>> EXECUTION wsgiserver command' &&
@@ -82,7 +81,7 @@ services:
         entrypoint: ./docker/backend/celery-worker-entrypoint.sh
         volumes:
             - /var/log/celery:/var/run/celery
-            - .:/app # автоматическая перезагрузка celery-worker при изменении файлов (необходимо для работы watchfiles/runcelery)
+            - .:/app # автоматическая перезагрузка celery-worker при изменении файлов (необходимо для работы watchfiles/runcelery, внутри докера)
         env_file:
             - ./.env
         depends_on:

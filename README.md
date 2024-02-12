@@ -14,6 +14,8 @@
 PROBE_SERVER_URL=https://probe.fbrq.cloud/v1/send/
 PROBE_SERVER_TOKEN=<секретный JWT токен>
 
+CELERY_AUTORELOAD_WITH_DOCKER=1
+
 RUN_DEV_SERVER_WITH_DOCKER=1
 WINDOWS_POSTGRES_INSTALLED=1 # необходимо заранее вручную создать БД, например в pgAdmin4
 

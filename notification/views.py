@@ -90,7 +90,7 @@ class MailingViewSet(viewsets.ModelViewSet):
     @action(["get"], False)
     def fullstat(self, request):
         statistics = service.get_statistics(
-            self.queryset
+            self.get_queryset()
         )
         return Response(statistics)
 
@@ -102,7 +102,7 @@ class MailingViewSet(viewsets.ModelViewSet):
     @action(["get"], True)
     def stat(self, request, pk=None):
         statistics = service.get_statistics(
-            get_list_or_404(self.queryset, pk=pk)
+            get_list_or_404(self.get_queryset(), pk=pk)
         )
         return Response(statistics)
 
